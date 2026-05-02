@@ -88,6 +88,9 @@ class WeatherViewModel @Inject constructor(
     fun retry() {
         fetchWeather(_uiState.value.lastSearchedCity)
     }
+    fun toggleDarkMode() {
+        _uiState.update { it.copy(isDarkMode = !it.isDarkMode) }
+    }
     fun fetchWeatherByLocation() {
         viewModelScope.launch {
             _uiState.update {

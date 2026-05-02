@@ -4,6 +4,7 @@ package com.example.weatherapp.presentation.ui
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
@@ -61,24 +64,36 @@ fun WeatherScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val backgroundGradient by remember(uiState.weather?.weatherMain) {
-        derivedStateOf {
-            when (uiState.weather?.weatherMain?.lowercase()) {
-                "clear" -> GradientClear
-                "clouds" -> GradientCloudy
-                "rain", "drizzle" -> GradientRain
-                "snow" -> GradientSnow
-                "thunderstorm" -> GradientThunder
-                "mist", "fog", "haze", "smoke" -> GradientMist
-                else -> GradientDefault
+    val backgroundGradient = remember(uiState.weather?.weatherMain, uiState.isDarkMode) {
+        Brush.verticalGradient(
+            if (uiState.isDarkMode) {
+                when (uiState.weather?.weatherMain?.lowercase()) {
+                    "clear" -> GradientClear
+                    "clouds" -> GradientCloudy
+                    "rain", "drizzle" -> GradientRain
+                    "snow" -> GradientSnow
+                    "thunderstorm" -> GradientThunder
+                    "mist", "fog", "haze", "smoke" -> GradientMist
+                    else -> GradientDefault
+                }
+            } else {
+                when (uiState.weather?.weatherMain?.lowercase()) {
+                    "clear" -> GradientClearLight
+                    "clouds" -> GradientCloudyLight
+                    "rain", "drizzle" -> GradientRainLight
+                    "snow" -> GradientSnowLight
+                    "thunderstorm" -> GradientThunderLight
+                    "mist", "fog", "haze", "smoke" -> GradientMistLight
+                    else -> GradientDefaultLight
+                }
             }
-        }
+        )
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(backgroundGradient))
+            .background(backgroundGradient)
     ) {
         Column(
             modifier = Modifier
@@ -100,7 +115,9 @@ fun WeatherScreen(
                     keyboardController?.hide()
                     focusManager.clearFocus()
                 },
-                onLocationClick = { viewModel.fetchWeatherByLocation() }
+                onLocationClick = { viewModel.fetchWeatherByLocation() },
+                isDarkMode = uiState.isDarkMode,
+                onThemeToggle = viewModel::toggleDarkMode
             )
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -311,13 +328,15 @@ private fun InfoCard(
     icon: ImageVector,
     label: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDarkMode: Boolean = true  // ← أضف
+
 ) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        color = CardBackground,
-        border = BorderStroke(1.dp, CardBorder)
+        color = if (isDarkMode) CardBackground else CardBackgroundLight,
+        border = BorderStroke(1.dp, if (isDarkMode) CardBorder else CardBorderLight)  // ← غيّر
     ) {
         Column(
             modifier = Modifier
@@ -350,7 +369,9 @@ private fun InfoCard(
 @Composable
 private fun SunriseSunsetCard(
     sunrise: Long,
-    sunset: Long
+    sunset: Long,
+    isDarkMode: Boolean = true
+
 ) {
     val timeFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
     val sunriseStr = timeFormat.format(Date(sunrise * 1000))
@@ -471,6 +492,7 @@ private fun ErrorSection(message: String, onRetry: () -> Unit) {
 private fun ForecastSection(
     forecasts: List<DailyForecast>,
     isLoading: Boolean,
+    isDarkMode: Boolean = true,
     onForecastClick: (Int) -> Unit  // ← أضف هذا
 
 ) {
@@ -680,7 +702,9 @@ private fun LocationAwareSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
-    onLocationClick: () -> Unit
+    onLocationClick: () -> Unit,
+    isDarkMode: Boolean,            // ← أضف
+    onThemeToggle: () -> Unit
 ) {
     // نطلب صلاحية الموقع
     val locationPermissions = rememberMultiplePermissionsState(
@@ -751,6 +775,23 @@ private fun LocationAwareSearchBar(
                 Icon(
                     imageVector = Icons.Outlined.MyLocation,
                     contentDescription = "Use my location",
+                    tint = Color.White
+                )
+            }
+        }
+        Surface(
+            shape = CircleShape,
+            color = Color.White.copy(alpha = 0.15f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+            modifier = Modifier.size(56.dp)
+        ) {
+            IconButton(onClick = onThemeToggle) {
+                Icon(
+                    imageVector = if (isDarkMode)
+                        Icons.Outlined.LightMode   // ← لما الوضع مظلم يظهر أيقونة الشمس
+                    else
+                        Icons.Outlined.DarkMode,   // ← لما الوضع مضيء يظهر أيقونة القمر
+                    contentDescription = "Toggle theme",
                     tint = Color.White
                 )
             }
